@@ -1,11 +1,11 @@
 {
     "id": "1A723306",
-    "path": "~/stat348/ItemDemand/ItemDemand.R",
+    "path": "C:/Users/fellars/Documents/stat348/ItemDemand/ItemDemand.R",
     "project_path": "ItemDemand.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "512291454",
     "contents": "",
-    "dirty": true,
+    "dirty": false,
     "created": 1731688471974.0,
     "source_on_save": false,
     "relative_order": 1,
@@ -17,11 +17,11 @@
         "scrollLine": "24"
     },
     "folds": "",
-    "lastKnownWriteTime": 1731689430,
+    "lastKnownWriteTime": 1731690345,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1731689905820,
+    "last_content_update": 1731690345978,
     "read_only": false,
     "read_only_alternatives": []
 }
