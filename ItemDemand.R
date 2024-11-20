@@ -8,9 +8,9 @@ library(tidyverse)
 library(embed)
 library(discrim)
 library(themis)
-library(poissonreg)
-library(bestglm)
-library(yardstick)
+library(modeltime)
+library(timetk)
+
 
 train_data <- vroom("./train.csv")
 test_data <- vroom("./test.csv")
@@ -22,6 +22,9 @@ test_store1 <- test_data |>
   filter(store == 1, item == 1)
 
 store2 <- train_data |>
+  filter(store == 2, item == 1)
+
+test_store2 <- test_data |>
   filter(store == 2, item == 1)
 
 plot1 <- store1 |>
@@ -102,3 +105,83 @@ bart_CV_results <- bart_wf |>
 bart_best_tune <- bart_CV_results |>
   show_best(metric = "smape", n = 1)
 
+######################################################################################
+#SARIMA
+
+cv_split <- time_series_split(store1, assess = "3 months", cumulative = TRUE)
+cv_split |>
+  tk_time_series_cv_plan() |>
+  plot_time_series_cv_plan(date, sales, .interactive = FALSE)
+
+cv_split2 <- time_series_split(store2, assess = "3 months", cumulative = TRUE)
+cv_split2 |>
+  tk_time_series_cv_plan() |>
+  plot_time_series_cv_plan(date, sales, .interactive = FALSE)
+
+arima_recipe <- recipe(sales~., data = store1) |>
+  step_rm(c("store", "item")) |>
+  step_date(date, features = c("dow", "month", "year", "doy", "decimal")) |>
+  step_mutate(
+    date_dow = factor(date_dow),
+    date_month = factor(date_month),
+    date_doy = factor(date_doy),
+    date_year = as.numeric(date_year),
+    date_decimal = as.numeric(date_decimal)) |>
+  step_lencode_glm(all_nominal_predictors(), outcome = vars(sales)) |>
+  step_normalize(all_nominal_predictors())
+
+prepped_arima <- prep(arima_recipe)
+
+arima_mod <- arima_reg(seasonal_period = 365,
+                       non_seasonal_ar = 5,
+                       non_seasonal_ma = 5,
+                       seasonal_ar = 2,
+                       seasonal_ma = 2,
+                       non_seasonal_differences = 2,
+                       seasonal_differences = 2) |>
+  set_engine("auto_arima")
+
+arima_wf <- workflow() |>
+  add_recipe(arima_recipe) |>
+  add_model(arima_mod) |>
+  fit(data=training(cv_split))
+
+cv_results <- modeltime_calibrate(arima_wf, 
+                                  new_data = testing(cv_split))
+
+p1 <- cv_results |>
+  modeltime_forecast(
+    new_data = testing(cv_split),
+    actual_data = training (cv_split)
+  ) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+fullfit <- cv_results |>
+  modeltime_refit(data=store1)
+
+p2 <- fullfit |>
+  modeltime_forecast(
+    new_data = test_store1, 
+    actual_data = store1) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+cv_results2 <- modeltime_calibrate(arima_wf, 
+                                  new_data = testing(cv_split2))
+
+p3 <- cv_results2 |>
+  modeltime_forecast(
+    new_data = testing(cv_split2),
+    actual_data = training (cv_split2)
+  ) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+fullfit2 <- cv_results2 |>
+  modeltime_refit(data=store2)
+
+p4 <- fullfit2 |>
+  modeltime_forecast(
+    new_data = test_store2, 
+    actual_data = store2) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+plotly::subplot(p1,p3,p2,p4, nrows=2)
