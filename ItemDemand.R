@@ -185,3 +185,58 @@ p4 <- fullfit2 |>
   plot_modeltime_forecast(.interactive = FALSE)
 
 plotly::subplot(p1,p3,p2,p4, nrows=2)
+
+
+
+prophet_model <- prophet_reg() |>
+  set_engine(engine = "prophet") |>
+  fit(sales ~ date, data = store1)
+
+cv_split <- time_series_split(store1, assess = "3 months", cumulative = TRUE)
+cv_split |>
+  tk_time_series_cv_plan() |>
+  plot_time_series_cv_plan(date, sales, .interactive = FALSE)
+
+cv_results <- modeltime_calibrate(prophet_model, 
+                                  new_data = testing(cv_split))
+p1 <- cv_results |>
+  modeltime_forecast(
+    new_data = testing(cv_split),
+    actual_data = training (cv_split)
+  ) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+fullfit <- cv_results |>
+  modeltime_refit(data=store1)
+
+p2 <- fullfit |>
+  modeltime_forecast(
+    new_data = test_store1, 
+    actual_data = store1) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+
+cv_split2 <- time_series_split(store2, assess = "3 months", cumulative = TRUE)
+cv_split2 |>
+  tk_time_series_cv_plan() |>
+  plot_time_series_cv_plan(date, sales, .interactive = FALSE)
+cv_results2 <- modeltime_calibrate(prophet_model, 
+                                   new_data = testing(cv_split2))
+p3 <- cv_results2 |>
+  modeltime_forecast(
+    new_data = testing(cv_split2),
+    actual_data = training (cv_split2)
+  ) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+fullfit2 <- cv_results2 |>
+  modeltime_refit(data=store2)
+
+p4 <- fullfit2 |>
+  modeltime_forecast(
+    new_data = test_store2, 
+    actual_data = store2) |>
+  plot_modeltime_forecast(.interactive = FALSE)
+
+
+plotly::subplot(p1,p3,p2,p4, nrows=2)
